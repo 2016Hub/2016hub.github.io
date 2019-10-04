@@ -79,7 +79,7 @@ return regions
 &lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
 &lt;/ul&gt;
 
-&lt;h4 id=&#34;大致思路&#34;&gt;大致思路：&lt;/h4&gt;
+&lt;p&gt;大致思路：&lt;/p&gt;
 
 &lt;pre&gt;&lt;code&gt;根据contours信息，构建外界矩形，并判断该轮廓是否合理。因为车牌是规则的矩形，有其长宽的信息，可根据构建的矩形的长宽与设定的进行对比，若满足则将其保留，否则剔除。 即车牌长宽比识别车牌定位。
 &lt;/code&gt;&lt;/pre&gt;
