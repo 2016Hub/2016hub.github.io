@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>简易车牌识别 on The hut of Ly</title>
+    <link>https://2016Hub.github.io/categories/%E7%AE%80%E6%98%93%E8%BD%A6%E7%89%8C%E8%AF%86%E5%88%AB/</link>
+    <description>Recent content in 简易车牌识别 on The hut of Ly</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Fri, 04 Oct 2019 10:46:30 +0800</lastBuildDate>
+    
+	<atom:link href="https://2016Hub.github.io/categories/%E7%AE%80%E6%98%93%E8%BD%A6%E7%89%8C%E8%AF%86%E5%88%AB/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>Simple_Ipr</title>
+      <link>https://2016Hub.github.io/2019/10/simple_ipr/</link>
+      <pubDate>Fri, 04 Oct 2019 10:46:30 +0800</pubDate>
+      
+      <guid>https://2016Hub.github.io/2019/10/simple_ipr/</guid>
+      <description>&lt;h2 id=&#34;一-项目的简介&#34;&gt;一、项目的简介&lt;/h2&gt;
+
+&lt;p&gt;本次我的选题是车牌识别。一方面是因为当下车牌识别已经应用于生活的方方面面，对我们的生活质量有较大的改善和帮助；另一方面，当然就是对它的熟悉，因为在上课的时候，老师所讲案例就是车牌识别，当时所了解的知识理论知识，所以也正好趁这次大作业，来进行实践一下，可能做的不是那么的完善，功能也十分的简易，但是自己通过这个大作业，真正熟悉了车牌识别的整个流程，以及所用到的技术。
+同时，关于一些有所欠缺的地方（车牌的识别），自己随后去完善。&lt;/p&gt;
+
+&lt;h2 id=&#34;二-安装与使用说明&#34;&gt;二、安装与使用说明&lt;/h2&gt;
+
+&lt;p&gt;环境及相关的依赖库：
+    Python3.6、Pycharm、Numpy、Opencv、Pytesseract、PIL、Tesseract-OCR引擎、chi_sim.traindata字库&lt;/p&gt;
+
+&lt;h2 id=&#34;三-设计思路&#34;&gt;三、设计思路&lt;/h2&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;p&gt;车牌预处理（即Handling(img) 函数）&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;def Process(img):
+# 高斯平滑
+gaussian = cv2.GaussianBlur(img, (3, 3), 0, 0, cv2.BORDER_DEFAULT)
+# 中值滤波
+median = cv2.medianBlur(gaussian, 5)
+# Sobel算子
+# 梯度方向: x
+sobel = cv2.Sobel(median, cv2.CV_8U, 1, 0, ksize=3)
+# 二值化
+ret, binary = cv2.threshold(sobel, 170, 255, cv2.THRESH_BINARY)
+# 核函数
+element1 = cv2.getStructuringElement(cv2.MORPH_RECT, (9, 1))
+element2 = cv2.getStructuringElement(cv2.MORPH_RECT, (9, 7))
+# 膨胀
+dilation = cv2.dilate(binary, element2, iterations=1)
+# 腐蚀
+erosion = cv2.erode(dilation, element1, iterations=1)
+# 膨胀
+dilation2 = cv2.dilate(erosion, element2, iterations=3)
+return dilation2
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;车牌定位（即GetLicense(img)函数）&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;def GetRegion(img):
+regions = []
+# 查找轮廓
+_, contours, hierarchy = cv2.findContours(img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+for contour in contours:
+    area = cv2.contourArea(contour)
+    if (area &amp;lt; 2000):
+        continue
+    eps = 1e-3 * cv2.arcLength(contour, True)
+    approx = cv2.approxPolyDP(contour, eps, True)
+    rect = cv2.minAreaRect(contour)
+    box = cv2.boxPoints(rect)
+    box = np.int0(box)
+    height = abs(box[0][1] - box[2][1])
+    width = abs(box[0][0] - box[2][0])
+    ratio = float(width) / float(height)
+    if (ratio &amp;lt; 5 and ratio &amp;gt; 1.8):
+        regions.append(box)
+return regions
+
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h4 id=&#34;大致思路&#34;&gt;大致思路：&lt;/h4&gt;
+
+&lt;pre&gt;&lt;code&gt;根据contours信息，构建外界矩形，并判断该轮廓是否合理。因为车牌是规则的矩形，有其长宽的信息，可根据构建的矩形的长宽与设定的进行对比，若满足则将其保留，否则剔除。 即车牌长宽比识别车牌定位。
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;p&gt;车牌号的识别（Identify(img)函数）&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;def Identify(img):
+# 灰度化
+gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+prc = Handling(gray)
+regions = GetLicense(prc)
+for box in regions:
+    #将车牌标记
+    cv2.drawContours(img, [box], 0, (0, 255, 0), 2)
+    cv2.imshow(&amp;quot;Result1&amp;quot;,img)
+
+    #仿射变换，将车牌截剪出来
+    pts1 = np.float32([[box[0][0],box[0][1]], [box[1][0],box[1][1]], [box[2][0],box[2][1]],[box[3][0],box[3][1]]])
+    pts2 = np.float32([[200, 120], [0, 120], [0, 0], [200, 0]])
+    M = cv2.getPerspectiveTransform(pts1, pts2)
+    dst = cv2.warpPerspective(img, M, (200, 120))
+    gray1=cv2.cvtColor(dst,cv2.COLOR_BGRA2GRAY)
+
+    #OCR图像识别
+    cv2.imwrite(&amp;quot;./Result2.png&amp;quot;, gray1)
+    pytesseract.pytesseract.tesseract_cmd = &#39;C://Program Files (x86)/Tesseract-OCR/tesseract.exe&#39;
+    text = pytesseract.image_to_string(Image.open(&#39;./Result2.png&#39;))
+    print(text)
+    cv2.imshow(&amp;quot;Result2&amp;quot;, gray1)
+
+cv2.waitKey(0)
+cv2.destroyAllWindows()
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;&amp;ldquo;特色与创新&amp;rdquo;&lt;/p&gt;
+
+&lt;p&gt;本程序识别具有局限性，对识别车牌的图片非常局限~~~&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;网上一种方法是计算车牌的水平和垂直投影，峰谷分析进行分割，然后通过卷积神经网络训练样本对采集的各个数字字母进行匹配识别。由于对这一块知识的不熟悉，自己采用opencv的第三方库pytesseract,结合Tesseract-OCR引擎对所获的车牌的图片进行识别，虽然效果不是那么的好，但是对于较清晰的图片，还是可以识别出来的。同时。这也是自己实验需要改进和完善的地方。大家可以自行完善哈！
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;附源码&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;# -*- coding: utf-8 -*-
+import cv2
+import numpy as np
+import pytesseract
+from PIL import Image
+
+
+# 形态学处理
+def Handling(img):
+# 高斯平滑
+gaussian = cv2.GaussianBlur(img, (3, 3), 0, 0, cv2.BORDER_DEFAULT)
+# 中值滤波
+median = cv2.medianBlur(gaussian, 5)
+# Sobel算子
+# 梯度方向: x
+sobel = cv2.Sobel(median, cv2.CV_8U, 1, 0, ksize=3)
+# 二值化
+ret, binary = cv2.threshold(sobel, 170, 255, cv2.THRESH_BINARY)
+# 核函数
+element1 = cv2.getStructuringElement(cv2.MORPH_RECT, (9, 1))
+element2 = cv2.getStructuringElement(cv2.MORPH_RECT, (9, 7))
+# 膨胀
+dilation = cv2.dilate(binary, element2, iterations=1)
+# 腐蚀
+erosion = cv2.erode(dilation, element1, iterations=1)
+# 膨胀
+dilation2 = cv2.dilate(erosion, element2, iterations=3)
+return dilation2
+
+
+def GetLicense(img):
+regions = []
+
+# 查找轮廓
+_, contours, hierarchy = cv2.findContours(img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+for contour in contours:
+    area = cv2.contourArea(contour)
+    if (area &amp;lt; 2000):
+        continue
+    eps = 1e-3 * cv2.arcLength(contour, True)
+    approx = cv2.approxPolyDP(contour, eps, True)
+    rect = cv2.minAreaRect(contour)
+    box = cv2.boxPoints(rect)
+    box = np.int0(box)
+    height = abs(box[0][1] - box[2][1])
+    width = abs(box[0][0] - box[2][0])
+    ratio = float(width) / float(height)
+    if (ratio &amp;lt; 5 and ratio &amp;gt; 1.8):
+        regions.append(box)
+return regions
+
+
+def Identify(img):
+# 灰度化
+gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+prc = Handling(gray)
+regions = GetLicense(prc)
+for box in regions:
+    #将车牌标记
+    cv2.drawContours(img, [box], 0, (0, 255, 0), 2)
+    cv2.imshow(&amp;quot;Result1&amp;quot;,img)
+
+    #仿射变换，将车牌截剪出来
+    pts1 = np.float32([[box[0][0],box[0][1]], [box[1][0],box[1][1]], [box[2][0],box[2][1]],[box[3][0],box[3][1]]])
+    pts2 = np.float32([[200, 120], [0, 120], [0, 0], [200, 0]])
+    M = cv2.getPerspectiveTransform(pts1, pts2)
+    dst = cv2.warpPerspective(img, M, (200, 120))
+    gray1=cv2.cvtColor(dst,cv2.COLOR_BGRA2GRAY)
+
+    #OCR图像识别
+    cv2.imwrite(&amp;quot;./Result2.png&amp;quot;, gray1)
+    pytesseract.pytesseract.tesseract_cmd = &#39;C://Program Files (x86)/Tesseract-OCR/tesseract.exe&#39;
+    text = pytesseract.image_to_string(Image.open(&#39;./Result2.png&#39;))
+    print(text)
+    cv2.imshow(&amp;quot;Result2&amp;quot;, gray1)
+
+cv2.waitKey(0)
+cv2.destroyAllWindows()
+
+
+if __name__ == &#39;__main__&#39;:
+# 输入的参数为图片的路径
+img = cv2.imread(&#39;./test.png&#39;)
+Identify(img)
+
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;&lt;em&gt;所用图片：&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;参考：&lt;a href=&#34;https://blog.csdn.net/qq_37385726/article/details/82345122&#34;&gt;https://blog.csdn.net/qq_37385726/article/details/82345122&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;讲得非常非常详细~~~&lt;/p&gt;</description>
+    </item>
+    
+  </channel>
+</rss>
